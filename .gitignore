@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+.env
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+dist/
+*.local
+
+# Docker
+.dockerignore
+Dockerfile*
+
+# IDE
+.vscode/
+.idea/
+
+# Data
+compass_checks.js
+*.log

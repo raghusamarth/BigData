@@ -1,0 +1,55 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DB_NAME=stock_analysis_db
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=/api
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # One-shot data seed: docker compose --profile seed run --rm seed
+  seed:
+    build: ./backend
+    profiles: ["seed"]
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DB_NAME=stock_analysis_db
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["python -m jobs.ingest_bulk --period 5y && python -m jobs.compute_indicators && python jobs/spark_correlation.py --pandas-only"]
+
+volumes:
+  mongo-data:
